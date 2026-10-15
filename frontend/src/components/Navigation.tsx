@@ -150,7 +150,14 @@ export default function Navigation({
             />
           </div>
         </div>
+
+        {/* Developer Attribution */}
+        <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400 px-1">
+          <span>By <a href="https://devlikhith.vercel.app/" target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline font-bold">Kami Likhith</a></span>
+          <a href="https://github.com/likhith3035" target="_blank" rel="noreferrer" className="hover:text-slate-200 transition-colors">GitHub ↗</a>
+        </div>
       </div>
     </aside>
+
   );
 }

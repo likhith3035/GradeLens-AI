@@ -162,5 +162,16 @@ GradeLens-AI/
 
 ---
 
+---
+
+## 👨‍💻 Developer & Author
+
+**Kami Likhith**
+- 🌐 **Portfolio**: [devlikhith.vercel.app](https://devlikhith.vercel.app/)
+- 🐙 **GitHub**: [@likhith3035](https://github.com/likhith3035)
+
+---
+
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE) - Copyright (c) 2026 **Kami Likhith**.
+
