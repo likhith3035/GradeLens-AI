@@ -13,8 +13,15 @@ class GeneralMemoParser(BaseMemoParser):
     ]
 
     NAME_PATTERNS = [
-        re.compile(r'(?:NAME\s*OF\s*THE\s*CANDIDATE|NAME\s*OF\s*THE\s*STUDENT|STUDENT(?:\'?S)?\s*NAME|CANDIDATE\s*NAME|NAME)[\s:\.\-]*([A-Z\s\.\']{3,50})', re.IGNORECASE),
+        re.compile(r'(?:NAME\s*OF\s*THE\s*CANDIDATE|NAME\s*OF\s*THE\s*STUDENT|STUDENT(?:\'?S)?\s*NAME|CANDIDATE(?:\'?S)?\s*NAME)[\s:\.\-]*([A-Z\s\.\']{3,50})', re.IGNORECASE),
+        re.compile(r'(?:^|\n)\s*(?:STUDENT\s*NAME|CANDIDATE\s*NAME|NAME)[\s:\.\-]+([A-Z\s\.\']{3,50})', re.IGNORECASE),
     ]
+
+    INVALID_NAME_TOKENS = {
+        "SUBJECT", "COURSE", "GRADE", "CREDITS", "CREDIT", "RESULT", "MARKS",
+        "EXAMINATION", "EXAM", "SEMESTER", "BRANCH", "COLLEGE", "TOT", "INTERNAL",
+        "EXTERNAL", "THEORY", "PRACTICAL", "CODE", "PROVISIONAL", "CERTIFICATE"
+    }
 
     COLLEGE_PATTERNS = [
         re.compile(r'(?:COLLEGE|INSTITUTE|ACADEMY|UNIVERSITY)[\s:\.\-]*([A-Za-z0-9\s,\.\(\)\-]{4,100})', re.IGNORECASE),
@@ -67,7 +74,12 @@ class GeneralMemoParser(BaseMemoParser):
             # Clean unwanted header words from name if captured
             name = re.sub(r'(?:FATHER|MOTHER|ROLL|HTNO|REGNO|COLLEGE|BRANCH).*$', '', name, flags=re.IGNORECASE).strip()
             name = " ".join(name.split())
-        else:
+            # Check if name was captured from table column headers or blacklisted keywords
+            name_tokens = set(re.findall(r'[A-Za-z]+', name.upper()))
+            if len(name_tokens & self.INVALID_NAME_TOKENS) >= 2 or name.upper() in ("UNKNOWN", "UNKNOWN STUDENT"):
+                name = None
+
+        if not name:
             issues.append(self.create_issue("name", "MISSING_MANDATORY_FIELD", "WARNING", "Student name could not be automatically identified."))
 
         if not roll_number:
@@ -306,11 +318,27 @@ class GeneralMemoParser(BaseMemoParser):
     ) -> Dict[str, Any]:
         
         def safe_float(val: Any) -> Optional[float]:
-            if val is None or str(val).strip() in ("", "-", "NA", "N/A", "AB"):
+            if val is None:
                 return None
+            s = str(val).strip()
+            if s in ("", "-", "NA", "N/A", "AB"):
+                return None
+            # Strip whitespace and newlines e.g. "30\n." or "3\n.0"
+            s_clean = re.sub(r'[\r\n\t\s]+', '', s)
+            # Reconstruct cases where dot was separated by line-wrap: "30." -> "3.0"
+            m_sep = re.match(r'^([0-9])([0-9])\.$', s_clean)
+            if m_sep:
+                s_clean = f"{m_sep.group(1)}.{m_sep.group(2)}"
             try:
-                return round(float(str(val).strip()), 2)
+                return round(float(s_clean), 2)
             except ValueError:
+                # Try finding a float in the cleaned string
+                m = re.search(r'([0-9]+(?:\.[0-9]+)?)', s_clean)
+                if m:
+                    try:
+                        return round(float(m.group(1)), 2)
+                    except ValueError:
+                        pass
                 return None
 
         c_int = safe_float(int_marks)

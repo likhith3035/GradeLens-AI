@@ -8,13 +8,15 @@ class AnnaUniversityParser(GeneralMemoParser):
 
     ANNA_KEYWORDS = [
         "ANNA UNIVERSITY", "CHENNAI", "OFFICE OF THE CONTROLLER OF EXAMINATIONS",
-        "GRADE SHEET", "PROVISIONAL CERTIFICATE"
+        "CENTRE FOR ACADEMIC COURSES", "AFFILIATED INSTITUTIONS"
     ]
 
     def can_parse(self, text: str, metadata: Dict[str, Any]) -> float:
         upper = text.upper()
+        if "ANNA UNIVERSITY" in upper:
+            return 0.95
         if any(kw in upper for kw in self.ANNA_KEYWORDS):
-            return 0.92
+            return 0.85
         # Anna University 12-digit register number: e.g. 312218104001
         if re.search(r'\b[0-9]{12}\b', upper):
             return 0.75
