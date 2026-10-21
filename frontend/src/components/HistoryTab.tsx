@@ -1,36 +1,46 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Clock,
   ShieldCheck,
   RotateCcw,
-  User,
-  Calendar,
-  Activity,
-  CheckCircle2,
-  AlertCircle
+  User
 } from "lucide-react";
 import { fetchAuditLogs } from "../lib/api";
+import { AuditLogItem } from "../lib/types";
 
 export default function HistoryTab() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadLogs = async () => {
-    setLoading(true);
+  const loadLogs = useCallback(async () => {
     try {
       const data = await fetchAuditLogs(50);
       setLogs(data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load audit logs:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadLogs();
+    let ignore = false;
+    void fetchAuditLogs(50)
+      .then((data) => {
+        if (!ignore) {
+          setLogs(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load audit logs:", err);
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (

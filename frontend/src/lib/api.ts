@@ -1,4 +1,13 @@
-import { SystemHealth, AppSettings, AnalyticsFull, Student, SemesterResult } from "./types";
+import {
+  SystemHealth,
+  AppSettings,
+  AnalyticsFull,
+  Student,
+  ReviewQueueItem,
+  ReviewDetail,
+  AuditLogItem,
+  BatchResolveResponse
+} from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -14,7 +23,7 @@ export async function fetchSettings(): Promise<AppSettings> {
   return res.json();
 }
 
-export async function updateMode(mode: "local" | "online"): Promise<any> {
+export async function updateMode(mode: "local" | "online"): Promise<{ mode: string; message: string }> {
   const res = await fetch(`${API_BASE}/api/settings/mode`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -24,20 +33,20 @@ export async function updateMode(mode: "local" | "online"): Promise<any> {
   return res.json();
 }
 
-export async function updateTesseractPath(path: string): Promise<any> {
+export async function updateTesseractPath(path: string): Promise<{ tesseract_cmd: string; available: boolean; message: string }> {
   const res = await fetch(`${API_BASE}/api/settings/tesseract-path`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to update path" }));
+    const err = (await res.json().catch(() => ({ detail: "Failed to update path" }))) as { detail?: string };
     throw new Error(err.detail || "Failed to update path");
   }
   return res.json();
 }
 
-export async function purgeData(): Promise<any> {
+export async function purgeData(): Promise<{ message: string; status: string }> {
   const res = await fetch(`${API_BASE}/api/settings/purge-data`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,7 +56,21 @@ export async function purgeData(): Promise<any> {
   return res.json();
 }
 
-export async function uploadFiles(files: File[], profile: string = "auto"): Promise<any> {
+export async function uploadFiles(files: File[], profile: string = "auto"): Promise<{
+  total_files: number;
+  processed_files: number;
+  needs_review_files: number;
+  failed_files: number;
+  items: Array<{
+    filename: string;
+    status: string;
+    roll_number: string;
+    student_name: string;
+    semester: string;
+    sgpa: number | null;
+    issues_count: number;
+  }>;
+}> {
   const formData = new FormData();
   files.forEach((f) => formData.append("files", f));
   formData.append("profile", profile);
@@ -57,18 +80,18 @@ export async function uploadFiles(files: File[], profile: string = "auto"): Prom
     body: formData,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    const err = (await res.json().catch(() => ({ detail: "Upload failed" }))) as { detail?: string };
     throw new Error(err.detail || "Upload failed");
   }
   return res.json();
 }
 
-export async function loadSamplePack(): Promise<any> {
+export async function loadSamplePack(): Promise<{ message: string; count: number; items?: unknown[] }> {
   const res = await fetch(`${API_BASE}/api/upload/load-sample-batch`, {
     method: "POST",
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to load sample pack" }));
+    const err = (await res.json().catch(() => ({ detail: "Failed to load sample pack" }))) as { detail?: string };
     throw new Error(err.detail || "Failed to load sample pack");
   }
   return res.json();
@@ -116,25 +139,36 @@ export async function fetchStudentDetail(rollNumber: string): Promise<Student> {
   return res.json();
 }
 
-export async function fetchReviewQueue(): Promise<any[]> {
+export async function fetchReviewQueue(): Promise<ReviewQueueItem[]> {
   const res = await fetch(`${API_BASE}/api/review/queue`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch review queue");
   return res.json();
 }
 
-export async function fetchReviewDetail(resultId: number): Promise<any> {
+export async function fetchReviewDetail(resultId: number): Promise<ReviewDetail> {
   const res = await fetch(`${API_BASE}/api/review/${resultId}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load review details");
   return res.json();
 }
 
-export async function submitCorrection(resultId: number, data: any): Promise<any> {
+export async function submitCorrection(
+  resultId: number,
+  data: Record<string, unknown>
+): Promise<{ message: string; result_id: number }> {
   const res = await fetch(`${API_BASE}/api/review/${resultId}/correct`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to save correction");
+  return res.json();
+}
+
+export async function resolveAllReviewItems(actor: string = "Academic Reviewer (Batch)"): Promise<BatchResolveResponse> {
+  const res = await fetch(`${API_BASE}/api/review/resolve-all?actor=${encodeURIComponent(actor)}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error("Failed to auto-resolve queue records");
   return res.json();
 }
 
@@ -154,7 +188,17 @@ export function getExcelExportUrl(params: {
   return url.toString();
 }
 
-export async function fetchRecentDocuments(limit: number = 10): Promise<any[]> {
+export async function fetchRecentDocuments(limit: number = 10): Promise<Array<{
+  id: number;
+  filename: string;
+  file_size: number;
+  mime_type?: string;
+  status: string;
+  error_message?: string | null;
+  ocr_used: boolean;
+  processing_time_ms?: number | null;
+  created_at?: string | null;
+}>> {
   try {
     const res = await fetch(`${API_BASE}/api/upload/recent?limit=${limit}`, { cache: "no-store" });
     if (!res.ok) return [];
@@ -165,7 +209,7 @@ export async function fetchRecentDocuments(limit: number = 10): Promise<any[]> {
   }
 }
 
-export async function fetchAuditLogs(limit: number = 50): Promise<any[]> {
+export async function fetchAuditLogs(limit: number = 50): Promise<AuditLogItem[]> {
   try {
     const res = await fetch(`${API_BASE}/api/review/audit-logs?limit=${limit}`, { cache: "no-store" });
     if (!res.ok) return [];
@@ -175,4 +219,3 @@ export async function fetchAuditLogs(limit: number = 50): Promise<any[]> {
     return [];
   }
 }
-

@@ -1,17 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ListOrdered,
-  FileText,
-  Clock,
   CheckCircle2,
-  AlertTriangle,
   RotateCcw,
-  Sparkles,
-  HardDrive,
   Eye,
-  ExternalLink,
   Image as ImageIcon
 } from "lucide-react";
 import { fetchRecentDocuments, getDocumentFileUrl } from "../lib/api";
@@ -20,24 +14,49 @@ interface ProcessingQueueTabProps {
   setActiveTab: (tab: string) => void;
 }
 
+interface DocumentItem {
+  id: number;
+  filename: string;
+  file_size: number;
+  mime_type?: string;
+  status: string;
+  error_message?: string | null;
+  ocr_used: boolean;
+  processing_time_ms?: number | null;
+  created_at?: string | null;
+}
+
 export default function ProcessingQueueTab({ setActiveTab }: ProcessingQueueTabProps) {
-  const [docs, setDocs] = useState<any[]>([]);
+  const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     try {
       const data = await fetchRecentDocuments(25);
       setDocs(data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load documents:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
+    let ignore = false;
+    void fetchRecentDocuments(25)
+      .then((data) => {
+        if (!ignore) {
+          setDocs(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load documents:", err);
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   return (

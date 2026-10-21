@@ -10,7 +10,6 @@ import {
   RefreshCw,
   X,
   FileCheck2,
-  ShieldCheck,
   AlertTriangle
 } from "lucide-react";
 import { uploadFiles, loadSamplePack } from "../lib/api";
@@ -114,8 +113,9 @@ export default function UploadTab({ onUploadSuccess, setActiveTab }: UploadTabPr
       alert(`🎉 ${res.message}`);
       onUploadSuccess();
       setActiveTab("students");
-    } catch (err: any) {
-      alert(`Could not load sample pack: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not load sample pack";
+      alert(`Could not load sample pack: ${msg}`);
     } finally {
       setLoadingSample(false);
     }
@@ -139,13 +139,23 @@ export default function UploadTab({ onUploadSuccess, setActiveTab }: UploadTabPr
       // Map response to queue items
       const summaryItems = res.items || [];
       const updated = items.map((it) => {
-        const match = summaryItems.find((s: any) => s.filename === it.name);
+        const match = summaryItems.find((s) => s.filename === it.name);
         if (match) {
+          const mappedStatus = match.status.toLowerCase();
+          const validStatus: FileQueueItem["status"] =
+            mappedStatus === "completed" ||
+            mappedStatus === "needs_review" ||
+            mappedStatus === "failed" ||
+            mappedStatus === "processing" ||
+            mappedStatus === "uploading"
+              ? mappedStatus
+              : "completed";
+
           return {
             ...it,
-            status: (match.status.toLowerCase() as any) || "completed",
-            error: match.error,
-            memosExtracted: match.memos_extracted || 1,
+            status: validStatus,
+            error: (match as { error?: string }).error,
+            memosExtracted: (match as { memos_extracted?: number }).memos_extracted || 1,
             rollNumber: match.roll_number,
             studentName: match.student_name,
             semester: match.semester,
@@ -156,7 +166,10 @@ export default function UploadTab({ onUploadSuccess, setActiveTab }: UploadTabPr
         return it;
       });
 
-      const totalMemos = summaryItems.reduce((acc: number, cur: any) => acc + (cur.memos_extracted || 1), 0);
+      const totalMemos = summaryItems.reduce(
+        (acc: number, cur) => acc + ((cur as { memos_extracted?: number }).memos_extracted || 1),
+        0
+      );
 
       setItems(updated);
       setBatchSummary({
@@ -168,12 +181,13 @@ export default function UploadTab({ onUploadSuccess, setActiveTab }: UploadTabPr
       });
 
       onUploadSuccess();
-    } catch (err: any) {
-      alert(`Upload or processing error: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload or processing error";
+      alert(`Upload or processing error: ${msg}`);
       setItems((prev) =>
         prev.map((it) =>
           it.status === "uploading" || it.status === "processing"
-            ? { ...it, status: "failed", error: err.message }
+            ? { ...it, status: "failed", error: msg }
             : it
         )
       );

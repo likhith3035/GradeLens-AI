@@ -4,11 +4,9 @@ import React, { useState, useEffect } from "react";
 import {
   ShieldAlert,
   Search,
-  Filter,
   AlertTriangle,
   FileSpreadsheet,
   Users,
-  ChevronRight,
   BookOpen
 } from "lucide-react";
 import { fetchStudents } from "../lib/api";
@@ -19,24 +17,26 @@ export default function BacklogsTab({ setActiveTab }: { setActiveTab: (tab: stri
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const loadBacklogs = async () => {
-    setLoading(true);
-    try {
-      const data = await fetchStudents({
-        has_backlogs: true,
-        search: search || undefined,
-        sort_by: "roll_number",
-      });
-      setBacklogStudents(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadBacklogs();
+    let ignore = false;
+    void fetchStudents({
+      has_backlogs: true,
+      search: search || undefined,
+      sort_by: "roll_number",
+    })
+      .then((data) => {
+        if (!ignore) {
+          setBacklogStudents(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load backlogs:", err);
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [search]);
 
   return (

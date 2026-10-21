@@ -74,7 +74,7 @@ export interface UploadItem {
   status: "pending" | "uploading" | "processing" | "completed" | "needs_review" | "failed";
   progress: number;
   error?: string;
-  result?: any;
+  result?: Record<string, unknown>;
 }
 
 export interface AnalyticsOverview {
@@ -146,4 +146,72 @@ export interface AppSettings {
   max_file_size_mb: number;
   max_batch_size: number;
   database_url: string;
+}
+
+export interface ReviewQueueIssue {
+  field: string | null;
+  type: string;
+  severity: "WARNING" | "ERROR" | "INFO";
+  message: string;
+}
+
+export interface ReviewQueueItem {
+  result_id: number;
+  roll_number: string;
+  student_name: string;
+  branch: string | null;
+  semester: string;
+  sgpa: number | null;
+  source_filename: string | null;
+  issues_count: number;
+  issues: ReviewQueueIssue[];
+  created_at: string;
+}
+
+export interface ReviewDetail {
+  result_id: number;
+  document: {
+    id: number | null;
+    filename: string | null;
+    file_size: number;
+    ocr_used: boolean;
+  };
+  student: {
+    id: number | null;
+    roll_number: string;
+    name: string;
+    branch: string;
+    batch: string;
+  };
+  semester_info: {
+    semester: string;
+    regulation: string | null;
+    examination_name: string | null;
+    examination_month_year: string | null;
+    sgpa: number | null;
+    cgpa: number | null;
+    total_credits: number | null;
+    overall_result: string | null;
+    verification_status: "VERIFIED" | "NEEDS_REVIEW" | "PENDING";
+    raw_text: string | null;
+  };
+  subjects: SubjectMark[];
+  issues: ExtractionIssue[];
+}
+
+export interface AuditLogItem {
+  id: number;
+  entity_type: string;
+  entity_id: number;
+  action: string;
+  field_name: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  actor: string;
+  timestamp: string | null;
+}
+
+export interface BatchResolveResponse {
+  message: string;
+  resolved_count: number;
 }

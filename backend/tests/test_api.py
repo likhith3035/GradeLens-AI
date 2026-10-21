@@ -74,3 +74,20 @@ def test_upload_and_flow():
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     assert len(res.content) > 1000
+
+def test_review_queue_and_resolve_all():
+    # Fetch review queue
+    res = client.get("/api/review/queue")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+    # Call resolve-all
+    res = client.post("/api/review/resolve-all?actor=AutomatedTest")
+    assert res.status_code == 200
+    data = res.json()
+    assert "resolved_count" in data
+
+    # Review queue should now be empty
+    res_after = client.get("/api/review/queue")
+    assert res_after.status_code == 200
+    assert len(res_after.json()) == 0

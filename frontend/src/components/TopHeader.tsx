@@ -10,9 +10,7 @@ import {
   ChevronDown,
   CheckCircle2,
   AlertTriangle,
-  X,
-  ExternalLink,
-  Laptop
+  ExternalLink
 } from "lucide-react";
 import { SystemHealth } from "../lib/types";
 

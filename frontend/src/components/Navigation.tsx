@@ -13,15 +13,14 @@ import {
   FileSpreadsheet,
   Clock,
   Settings,
-  ChevronRight,
-  HardDrive
+  ChevronRight
 } from "lucide-react";
 import { SystemHealth } from "../lib/types";
 
 interface NavigationProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  health: SystemHealth | null;
+  health?: SystemHealth | null;
   pendingReviewCount: number;
   totalMemos?: number;
   recentDocsCount?: number;
@@ -30,7 +29,7 @@ interface NavigationProps {
 export default function Navigation({
   activeTab,
   setActiveTab,
-  health,
+  health: _health,
   pendingReviewCount,
   totalMemos = 0,
   recentDocsCount = 0,

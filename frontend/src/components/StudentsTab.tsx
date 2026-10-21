@@ -1,18 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
   Search,
-  Filter,
   ArrowUpDown,
-  BookOpen,
-  Award,
   ChevronRight,
-  ExternalLink,
-  ShieldAlert,
-  GraduationCap,
-  Calendar,
   X,
   FileText,
   TrendingUp
@@ -32,10 +25,8 @@ export default function StudentsTab() {
 
   // Selected student for detailed profile modal/drawer
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  const loadStudents = async () => {
-    setLoading(true);
+  const loadStudents = useCallback(async () => {
     try {
       const data = await fetchStudents({
         search: search || undefined,
@@ -46,25 +37,42 @@ export default function StudentsTab() {
       });
       setStudents(data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load students:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, selectedBranch, hasBacklogsOnly, sortBy, sortOrder]);
 
   useEffect(() => {
-    loadStudents();
+    let ignore = false;
+    void fetchStudents({
+      search: search || undefined,
+      branch: selectedBranch || undefined,
+      has_backlogs: hasBacklogsOnly,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+    })
+      .then((data) => {
+        if (!ignore) {
+          setStudents(data);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load students:", err);
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [search, selectedBranch, hasBacklogsOnly, sortBy, sortOrder]);
 
   const openStudentProfile = async (roll: string) => {
-    setProfileLoading(true);
     try {
       const detail = await fetchStudentDetail(roll);
       setSelectedStudent(detail);
-    } catch (err) {
+    } catch {
       alert("Failed to load student profile");
-    } finally {
-      setProfileLoading(false);
     }
   };
 

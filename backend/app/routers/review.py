@@ -228,3 +228,58 @@ def submit_manual_correction(result_id: int, payload: ManualCorrectionRequest, d
 
     return {"message": "Record successfully verified and updated.", "result_id": r.id}
 
+
+@router.post("/resolve-all")
+def resolve_all_records(actor: str = "Academic Reviewer", db: Session = Depends(get_db)):
+    """Automatically resolves calculation discrepancies, accepts calculated SGPA, and verifies all pending queue items."""
+    results = (
+        db.query(SemesterResult)
+        .filter(SemesterResult.verification_status == "NEEDS_REVIEW")
+        .all()
+    )
+
+    resolved_count = 0
+    for r in results:
+        all_subs = db.query(SubjectMark).filter(SubjectMark.semester_result_id == r.id).all()
+        if all_subs:
+            sub_dicts = [
+                {
+                    "credits": s.credits,
+                    "grade_points": s.grade_points or GRADE_TO_POINTS.get(normalize_grade(s.grade) or ""),
+                    "grade": s.grade,
+                    "subject_result": s.subject_result,
+                    "total_marks": s.total_marks,
+                    "max_marks": s.max_marks
+                }
+                for s in all_subs
+            ]
+            summary = compute_semester_summary(sub_dicts, extracted_sgpa=r.sgpa)
+            r.subjects_count = summary["total_subjects"]
+            r.passed_count = summary["subjects_passed"]
+            r.failed_count = summary["subjects_failed"]
+            r.backlog_count = summary["backlog_count"]
+            r.total_credits = summary["total_credits"]
+            r.overall_result = summary["overall_result"]
+            if summary.get("calculated_sgpa") is not None:
+                r.sgpa = summary["calculated_sgpa"]
+
+        student = db.query(Student).filter(Student.id == r.student_id).first()
+        if student and (not student.name or student.name.upper() in ("UNKNOWN", "UNKNOWN STUDENT")):
+            student.name = f"STUDENT ({student.roll_number})"
+
+        db.query(ExtractionIssue).filter(ExtractionIssue.semester_result_id == r.id).update({"is_resolved": True})
+        r.verification_status = "VERIFIED"
+        db.add(AuditLog(
+            entity_type="SemesterResult",
+            entity_id=r.id,
+            action="BATCH_VERIFY",
+            field_name="verification_status",
+            old_value="NEEDS_REVIEW",
+            new_value="VERIFIED",
+            actor=actor
+        ))
+        resolved_count += 1
+
+    db.commit()
+    return {"message": f"Successfully verified and resolved all {resolved_count} flagged records.", "resolved_count": resolved_count}
+

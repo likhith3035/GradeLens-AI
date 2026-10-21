@@ -49,28 +49,49 @@ export default function Home() {
     try {
       const q = await fetchReviewQueue();
       setPendingReviewCount(q.length);
-    } catch (e) {
+    } catch {
       setPendingReviewCount(0);
     }
 
     try {
       const recent = await fetchRecentDocuments(10);
       setRecentDocsCount(recent.length);
-    } catch (e) {
+    } catch {
       setRecentDocsCount(0);
     }
   };
 
   useEffect(() => {
-    refreshData();
+    let ignore = false;
+    void Promise.allSettled([
+      fetchHealth(),
+      fetchAnalytics(),
+      fetchReviewQueue(),
+      fetchRecentDocuments(10)
+    ]).then(([hRes, aRes, qRes, rRes]) => {
+      if (ignore) return;
+      if (hRes.status === "fulfilled") setHealth(hRes.value);
+      if (aRes.status === "fulfilled") {
+        setAnalytics(aRes.value);
+        setPendingReviewCount(aRes.value.overview.records_requiring_verification);
+      }
+      if (qRes.status === "fulfilled") setPendingReviewCount(qRes.value.length);
+      if (rRes.status === "fulfilled") setRecentDocsCount(rRes.value.length);
+      setAnalyticsLoading(false);
+    });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleModeSwitch = async (mode: "local" | "online") => {
     try {
       await updateMode(mode);
       await refreshData();
-    } catch (e: any) {
-      alert(`Mode switch failed: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Mode switch failed";
+      alert(`Mode switch failed: ${msg}`);
     }
   };
 

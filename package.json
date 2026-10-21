@@ -1,0 +1,14 @@
+{
+  "name": "gradelens-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated Marks Memo Extraction, Verification, & Academic Analytics Engine",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "powershell -NoProfile -Command \"cd backend; .\\venv\\Scripts\\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload\"",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "test:backend": "powershell -NoProfile -Command \"cd backend; .\\venv\\Scripts\\python -m pytest\""
+  }
+}

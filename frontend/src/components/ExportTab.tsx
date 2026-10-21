@@ -6,10 +6,7 @@ import {
   Download,
   Filter,
   CheckCircle2,
-  FileCheck,
-  Layers,
-  ShieldCheck,
-  AlertTriangle
+  Layers
 } from "lucide-react";
 import { getExcelExportUrl } from "../lib/api";
 

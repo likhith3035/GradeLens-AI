@@ -20,9 +20,6 @@ import {
   BarChart3,
   TrendingUp,
   Award,
-  Users,
-  ShieldAlert,
-  FileCheck2,
   PieChart as PieIcon
 } from "lucide-react";
 import { AnalyticsFull } from "../lib/types";
@@ -31,8 +28,6 @@ interface AnalyticsTabProps {
   analytics: AnalyticsFull | null;
   loading: boolean;
 }
-
-const COLORS = ["#1E3A8A", "#2563EB", "#3B82F6", "#60A5FA", "#10B981", "#F59E0B", "#EF4444", "#6B7280"];
 
 export default function AnalyticsTab({ analytics, loading }: AnalyticsTabProps) {
   if (loading || !analytics) {
@@ -43,7 +38,7 @@ export default function AnalyticsTab({ analytics, loading }: AnalyticsTabProps) 
     );
   }
 
-  const { overview, branch_performance, semester_performance, grade_distribution, top_students } = analytics;
+  const { overview, branch_performance, semester_performance, grade_distribution } = analytics;
 
   if (overview.total_students === 0) {
     return (

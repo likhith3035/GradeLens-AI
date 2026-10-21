@@ -1,19 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Settings,
   Server,
   Laptop,
   Cpu,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  Database,
-  Lock,
   Save,
-  RotateCcw,
-  Sparkles
+  RotateCcw
 } from "lucide-react";
 import { fetchSettings, updateMode, updateTesseractPath, purgeData } from "../lib/api";
 import { AppSettings } from "../lib/types";
@@ -24,39 +19,50 @@ interface SettingsTabProps {
 
 export default function SettingsTab({ onSettingsChanged }: SettingsTabProps) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<"local" | "online">("local");
   const [tesseractPath, setTesseractPath] = useState("");
   const [savingTesseract, setSavingTesseract] = useState(false);
   const [purging, setPurging] = useState(false);
 
-  const loadSettings = async () => {
-    setLoading(true);
+  const loadSettings = useCallback(async () => {
     try {
       const data = await fetchSettings();
       setSettings(data);
       setMode(data.mode);
       setTesseractPath(data.tesseract_cmd);
     } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      console.error("Failed to load settings:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadSettings();
+    let ignore = false;
+    void fetchSettings()
+      .then((data) => {
+        if (!ignore) {
+          setSettings(data);
+          setMode(data.mode);
+          setTesseractPath(data.tesseract_cmd);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load settings:", err);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleModeChange = async (newMode: "local" | "online") => {
     try {
       await updateMode(newMode);
       setMode(newMode);
-      loadSettings();
+      await loadSettings();
       onSettingsChanged();
       alert(`System switched to ${newMode === "local" ? "Local PC Mode" : "Online Cloud Mode"}.`);
-    } catch (err: any) {
-      alert(`Failed to update mode: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update mode";
+      alert(`Failed to update mode: ${msg}`);
     }
   };
 
@@ -65,10 +71,11 @@ export default function SettingsTab({ onSettingsChanged }: SettingsTabProps) {
     try {
       const res = await updateTesseractPath(tesseractPath);
       alert(res.message);
-      loadSettings();
+      await loadSettings();
       onSettingsChanged();
-    } catch (err: any) {
-      alert(`Error updating path: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error updating path";
+      alert(`Error updating path: ${msg}`);
     } finally {
       setSavingTesseract(false);
     }
@@ -85,8 +92,9 @@ export default function SettingsTab({ onSettingsChanged }: SettingsTabProps) {
       await purgeData();
       alert("All student records, marks, recent processing files, and uploaded documents have been permanently purged.");
       onSettingsChanged();
-    } catch (err: any) {
-      alert(`Error purging data: ${err.message}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error purging data";
+      alert(`Error purging data: ${msg}`);
     } finally {
       setPurging(false);
     }
